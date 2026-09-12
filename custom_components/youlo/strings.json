@@ -1,0 +1,17 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Joulo Integratie Instellen",
+        "description": "Voeg je Joulo API authorization token in (inclusief 'Bearer ').",
+        "data": {
+          "api_key": "API Key / Bearer Token"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Kan geen verbinding maken met de Joulo API.",
+      "invalid_auth": "Ongeldige API-sleutel."
+    }
+  }
+}
