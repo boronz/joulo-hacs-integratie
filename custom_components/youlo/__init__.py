@@ -3,11 +3,11 @@ from __future__ import annotations
 
 import logging
 from datetime import timedelta
-import aiohttp
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 from .const import DOMAIN, CONF_API_KEY, API_CHARGERS, API_ENERGY, API_ERE_POSITION
@@ -18,27 +18,37 @@ PLATFORMS: list[Platform] = [Platform.SENSOR]
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up Joulo from a config entry."""
     api_key = entry.data[CONF_API_KEY]
+    session = async_get_clientsession(hass)
 
     async def async_update_data():
-        """Fetch data from Joulo REST API."""
+        """Fetch data from Joulo REST API safely."""
         headers = {"Authorization": api_key}
         data = {}
-        async with aiohttp.ClientSession() as session:
-            try:
-                # 1. Chargers
-                async with session.get(API_CHARGERS, headers=headers) as resp:
-                    if resp.status == 200:
-                        data["chargers"] = await resp.json()
-                # 2. Energy
-                async with session.get(API_ENERGY, headers=headers) as resp:
-                    if resp.status == 200:
-                        data["energy"] = await resp.json()
-                # 3. ERE Position
-                async with session.get(API_ERE_POSITION, headers=headers) as resp:
-                    if resp.status == 200:
-                        data["ere"] = await resp.json()
-            except Exception as err:
-                raise UpdateFailed(f"Error communicating with Joulo API: {err}") from err
+        try:
+            # 1. Chargers Endpoint
+            async with session.get(API_CHARGERS, headers=headers) as resp:
+                if resp.status == 200:
+                    data["chargers"] = await resp.json()
+                else:
+                    _LOGGER.warning("Joulo Chargers API returned status %s", resp.status)
+
+            # 2. Energy Endpoint
+            async with session.get(API_ENERGY, headers=headers) as resp:
+                if resp.status == 200:
+                    data["energy"] = await resp.json()
+                else:
+                    _LOGGER.warning("Joulo Energy API returned status %s", resp.status)
+
+            # 3. ERE Position Endpoint
+            async with session.get(API_ERE_POSITION, headers=headers) as resp:
+                if resp.status == 200:
+                    data["ere"] = await resp.json()
+                else:
+                    _LOGGER.warning("Joulo ERE Position API returned status %s", resp.status)
+
+        except Exception as err:
+            raise UpdateFailed(f"Error communicating with Joulo API: {err}") from err
+
         return data
 
     coordinator = DataUpdateCoordinator(
@@ -49,6 +59,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         update_interval=timedelta(seconds=120),
     )
 
+    # Voer de eerste verversing uit zonder de startup te blokkeren bij een fout
     await coordinator.async_config_entry_first_refresh()
 
     hass.data.setdefault(DOMAIN, {})[entry.entry_id] = coordinator

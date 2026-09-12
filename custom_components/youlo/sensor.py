@@ -1,6 +1,7 @@
 """Support for Joulo sensors."""
 from __future__ import annotations
 
+import logging
 from homeassistant.components.sensor import (
     SensorDeviceClass,
     SensorEntity,
@@ -13,6 +14,8 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import DOMAIN
+
+_LOGGER = logging.getLogger(__name__)
 
 async def async_setup_entry(
     hass: HomeAssistant,
@@ -31,22 +34,22 @@ async def async_setup_entry(
 
     entities = [
         # Chargers
-        JouloSensor(coordinator, device_info, "Charger Status", "chargers", lambda d: d["chargers"]["chargers"][0]["status"], icon="mdi:ev-station"),
-        JouloSensor(coordinator, device_info, "Is Charging", "chargers", lambda d: d["chargers"]["chargers"][0]["is_charging"], icon="mdi:battery-charging"),
-        JouloSensor(coordinator, device_info, "Active Session kWh", "chargers", lambda d: d["chargers"]["chargers"][0]["current_session"]["kwh_so_far"], unit="kWh", device_class=SensorDeviceClass.ENERGY, state_class=SensorStateClass.TOTAL_INCREASING),
+        JouloSensor(coordinator, device_info, "Charger Status", "chargers_status", lambda d: d.get("chargers", {}).get("chargers", [{}])[0].get("status"), icon="mdi:ev-station"),
+        JouloSensor(coordinator, device_info, "Is Charging", "chargers_is_charging", lambda d: d.get("chargers", {}).get("chargers", [{}])[0].get("is_charging"), icon="mdi:battery-charging"),
+        JouloSensor(coordinator, device_info, "Active Session kWh", "chargers_session_kwh", lambda d: float(d.get("chargers", {}).get("chargers", [{}])[0].get("current_session", {}).get("kwh_so_far", 0)), unit="kWh", device_class=SensorDeviceClass.ENERGY, state_class=SensorStateClass.TOTAL_INCREASING),
 
         # Energy & ERE
-        JouloSensor(coordinator, device_info, "Total MID kWh", "energy", lambda d: d["energy"]["total_kwh"], unit="kWh", device_class=SensorDeviceClass.ENERGY, state_class=SensorStateClass.TOTAL_INCREASING),
-        JouloSensor(coordinator, device_info, "Total ERE Credits", "energy", lambda d: d["energy"]["total_ere_credits"], icon="mdi:certificate", state_class=SensorStateClass.TOTAL_INCREASING),
-        JouloSensor(coordinator, device_info, "Total All kWh", "energy", lambda d: d["energy"]["total_kwh_all"], unit="kWh", device_class=SensorDeviceClass.ENERGY, state_class=SensorStateClass.TOTAL_INCREASING),
+        JouloSensor(coordinator, device_info, "Total MID kWh", "energy_total_mid_kwh", lambda d: float(d.get("energy", {}).get("total_kwh", 0)), unit="kWh", device_class=SensorDeviceClass.ENERGY, state_class=SensorStateClass.TOTAL_INCREASING),
+        JouloSensor(coordinator, device_info, "Total ERE Credits", "energy_total_ere", lambda d: float(d.get("energy", {}).get("total_ere_credits", 0)), icon="mdi:certificate", state_class=SensorStateClass.TOTAL_INCREASING),
+        JouloSensor(coordinator, device_info, "Total All kWh", "energy_total_all_kwh", lambda d: float(d.get("energy", {}).get("total_kwh_all", 0)), unit="kWh", device_class=SensorDeviceClass.ENERGY, state_class=SensorStateClass.TOTAL_INCREASING),
 
         # Financial ERE-Position
-        JouloSensor(coordinator, device_info, "Verwachte Jaaropbrengst", "ere", lambda d: d["ere"]["total_expected_eur"], unit="€", device_class=SensorDeviceClass.MONETARY),
-        JouloSensor(coordinator, device_info, "Al Uitbetaald", "ere", lambda d: d["ere"]["paid"]["net_eur"], unit="€", device_class=SensorDeviceClass.MONETARY),
-        JouloSensor(coordinator, device_info, "Nog Uit Te Betalen", "ere", lambda d: round(float(d["ere"]["payable"]["net_eur"]) + float(d["ere"]["reserved"]["net_eur"]), 2), unit="€", device_class=SensorDeviceClass.MONETARY),
-        JouloSensor(coordinator, device_info, "Onverkochte ERE", "ere", lambda d: d["ere"]["unsold"]["ere"], icon="mdi:certificate-outline"),
-        JouloSensor(coordinator, device_info, "Onverkochte Verwachte Opbrengst", "ere", lambda d: d["ere"]["unsold"]["forecast_net_eur"], unit="€", device_class=SensorDeviceClass.MONETARY),
-        JouloSensor(coordinator, device_info, "Actuele ERE Marktprijs", "ere", lambda d: d["ere"]["indicative_price_per_ere"], unit="€/ERE", device_class=SensorDeviceClass.MONETARY),
+        JouloSensor(coordinator, device_info, "Verwachte Jaaropbrengst", "ere_expected_eur", lambda d: float(d.get("ere", {}).get("total_expected_eur", 0)), unit="€", device_class=SensorDeviceClass.MONETARY),
+        JouloSensor(coordinator, device_info, "Al Uitbetaald", "ere_paid_eur", lambda d: float(d.get("ere", {}).get("paid", {}).get("net_eur", 0)), unit="€", device_class=SensorDeviceClass.MONETARY),
+        JouloSensor(coordinator, device_info, "Nog Uit Te Betalen", "ere_payable_eur", lambda d: round(float(d.get("ere", {}).get("payable", {}).get("net_eur", 0)) + float(d.get("ere", {}).get("reserved", {}).get("net_eur", 0)), 2), unit="€", device_class=SensorDeviceClass.MONETARY),
+        JouloSensor(coordinator, device_info, "Onverkochte ERE", "ere_unsold_credits", lambda d: float(d.get("ere", {}).get("unsold", {}).get("ere", 0)), icon="mdi:certificate-outline"),
+        JouloSensor(coordinator, device_info, "Onverkochte Verwachte Opbrengst", "ere_unsold_forecast_eur", lambda d: float(d.get("ere", {}).get("unsold", {}).get("forecast_net_eur", 0)), unit="€", device_class=SensorDeviceClass.MONETARY),
+        JouloSensor(coordinator, device_info, "Actuele ERE Marktprijs", "ere_indicative_price", lambda d: float(d.get("ere", {}).get("indicative_price_per_ere", 0)), unit="€/ERE", device_class=SensorDeviceClass.MONETARY),
     ]
 
     async_add_entities(entities)
@@ -59,17 +62,17 @@ class JouloSensor(CoordinatorEntity, SensorEntity):
         coordinator,
         device_info: DeviceInfo,
         name: str,
-        category: str,
+        unique_suffix: str,
         value_fn,
         unit: str | None = None,
         device_class: SensorDeviceClass | None = None,
         state_class: SensorStateClass | None = None,
         icon: str | None = None,
     ) -> None:
-
+        """Initialize the sensor."""
         super().__init__(coordinator)
         self._attr_name = f"Joulo {name}"
-        self._attr_unique_id = f"joulo_{category}_{name.lower().replace(' ', '_')}"
+        self._attr_unique_id = f"joulo_{unique_suffix}"
         self._attr_device_info = device_info
         self._value_fn = value_fn
         self._attr_native_unit_of_measurement = unit
@@ -79,8 +82,11 @@ class JouloSensor(CoordinatorEntity, SensorEntity):
 
     @property
     def native_value(self):
-        """Return the state of the sensor."""
+        """Return the state of the sensor safely."""
+        if not self.coordinator.data:
+            return None
         try:
             return self._value_fn(self.coordinator.data)
-        except (KeyError, IndexError, TypeError):
+        except (KeyError, IndexError, TypeError, ValueError) as err:
+            _LOGGER.debug("Could not extract value for %s: %s", self._attr_name, err)
             return None
