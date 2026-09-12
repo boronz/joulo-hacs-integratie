@@ -17,15 +17,18 @@ PLATFORMS: list[Platform] = [Platform.SENSOR]
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up Joulo from a config entry."""
-    api_key = entry.data[CONF_API_KEY]
+    api_key = entry.data[CONF_API_KEY].strip()
+    
+    # Altijd op de achtergrond 'Bearer ' toevoegen als het er niet staat
+    auth_header = api_key if api_key.lower().startswith("bearer ") else f"Bearer {api_key}"
+    headers = {"Authorization": auth_header}
+    
     session = async_get_clientsession(hass)
 
     async def async_update_data():
         """Fetch data from Joulo REST API safely."""
-        headers = {"Authorization": api_key}
         data = {}
         try:
-            # 1. Chargers Endpoint
             async with session.get(API_CHARGERS, headers=headers) as resp:
                 if resp.status == 200:
                     data["chargers"] = await resp.json()
