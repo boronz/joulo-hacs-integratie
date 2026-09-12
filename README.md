@@ -1,11 +1,9 @@
-# Joulo Home Assistant Integration
+Joulo Integration for Home Assistant
 
-[![HACS Custom Repository](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://github.com/hacs/default)
-[![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)](https://github.com/)
+[![hacs_badge](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://github.com/hacs/default)
 
-Een custom component voor [Home Assistant](https://www.home-assistant.io/) om data van jouw **Joulo** slimme laadpaal en **ERE-credits** (Emissiereductie-eenheden) uit te lezen via de officiële Joulo API.
-
-Alle sensoren worden netjes gebundeld onder één **Joulo Apparaat (Device)** in Home Assistant.
+> **⚠️ Disclaimer & Unofficial Notice**  
+> Dit is een **community-project** en is op geen enkele wijze gelieerd aan, officieel ondersteund door of ontwikkeld in opdracht van **Joulo**. Dit project is ontstaan als een persoonlijk initiatief om de integratie van Joulo-laadpalen en ERE-statistieken binnen Home Assistant zo eenvoudig en overzichtelijk mogelijk te maken.
 
 ---
 
